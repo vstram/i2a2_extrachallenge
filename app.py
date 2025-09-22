@@ -28,6 +28,7 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 from utils.llm_config import LLMProvider, create_llm_manager, LLMManager
 from agents.analyser import create_analyser_agent, AnalyserAgent
 from agents.reporter import create_reporter_agent, ReporterAgent
+from components.file_uploader import render_file_uploader
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -399,8 +400,12 @@ class MainInterface:
                 st.warning("⚠️ Agents Not Ready")
 
         with col3:
-            if st.session_state.uploaded_file:
-                st.info(f"📁 {st.session_state.uploaded_file.name}")
+            if st.session_state.get('processed_data'):
+                file_info = st.session_state.processed_data.get('file_info', {})
+                filename = file_info.get('filename', 'Unknown')
+                st.success(f"📊 {filename}")
+            elif st.session_state.get('uploaded_file'):
+                st.info(f"📁 {st.session_state.uploaded_file}")
             else:
                 st.info("📁 No File Uploaded")
 
@@ -450,18 +455,16 @@ class MainInterface:
     @staticmethod
     def _render_main_content():
         """Render the main content when everything is ready."""
-        # File upload section
-        st.subheader("📁 Data Upload")
+        # File upload section using the dedicated component
+        max_size = st.session_state.get('max_file_size_mb', 150)
+        processed_data = render_file_uploader(max_file_size_mb=max_size, cache_enabled=True)
 
-        uploaded_file = st.file_uploader(
-            "Upload CSV File",
-            type=['csv'],
-            help=f"Upload CSV files up to {st.session_state.get('max_file_size_mb', 150)}MB"
-        )
-
-        if uploaded_file:
-            st.session_state.uploaded_file = uploaded_file
-            st.success(f"✅ File uploaded: {uploaded_file.name} ({uploaded_file.size / 1024 / 1024:.1f} MB)")
+        # Update session state with processed data
+        if processed_data:
+            st.session_state.processed_data = processed_data
+            st.session_state.statistics_data = processed_data.get('statistics_data')
+            st.session_state.pattern_data = processed_data.get('pattern_data')
+            st.session_state.chart_data = processed_data.get('chart_data')
 
         # Chat interface placeholder
         st.subheader("💬 Chat Interface")
