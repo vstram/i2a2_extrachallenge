@@ -1,0 +1,14 @@
+[project]
+name = "i2a2-extrachallenge"
+version = "0.1.0"
+description = "Streamlit AI Analytics Chatbot for CSV fraud detection analysis using dual-agent system"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "langchain>=0.3.27",
+    "langchain-ollama>=0.3.8",
+    "langchain-openai>=0.3.33",
+    "pandas>=2.3.2",
+    "plotly>=6.3.0",
+    "streamlit>=1.49.1",
+]
