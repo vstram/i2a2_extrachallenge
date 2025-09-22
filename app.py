@@ -29,6 +29,7 @@ from utils.llm_config import LLMProvider, create_llm_manager, LLMManager
 from agents.analyser import create_analyser_agent, AnalyserAgent
 from agents.reporter import create_reporter_agent, ReporterAgent
 from components.file_uploader import render_file_uploader
+from components.chat_interface import render_chat_interface
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -54,9 +55,7 @@ class SessionState:
             'reporter_agent': None,
             'agents_initialized': False,
 
-            # Chat Interface
-            'messages': [],
-            'chat_history': [],
+            # Chat Interface (handled by chat component)
 
             # File Processing
             'uploaded_file': None,
@@ -466,42 +465,13 @@ class MainInterface:
             st.session_state.pattern_data = processed_data.get('pattern_data')
             st.session_state.chart_data = processed_data.get('chart_data')
 
-        # Chat interface placeholder
-        st.subheader("💬 Chat Interface")
-
-        # Placeholder for chat messages
-        chat_container = st.container()
-
-        with chat_container:
-            if st.session_state.messages:
-                for message in st.session_state.messages:
-                    with st.chat_message(message["role"]):
-                        st.markdown(message["content"])
-            else:
-                st.info("👋 Welcome! Upload a CSV file and ask me questions about your data.")
-
-        # Chat input
-        if prompt := st.chat_input("Ask me about your data..."):
-            # Add user message
-            st.session_state.messages.append({"role": "user", "content": prompt})
-
-            # Display user message
-            with st.chat_message("user"):
-                st.markdown(prompt)
-
-            # Generate assistant response (placeholder)
-            with st.chat_message("assistant"):
-                if not st.session_state.uploaded_file:
-                    response = "Please upload a CSV file first so I can analyze your data."
-                else:
-                    response = f"I'll analyze your question: '{prompt}'. This functionality will be implemented in the next tasks (file processing and chat interface components)."
-
-                st.markdown(response)
-                st.session_state.messages.append({"role": "assistant", "content": response})
-
-        # Processing status
-        if st.session_state.processing_status:
-            st.info(f"⚙️ {st.session_state.processing_status}")
+        # Chat interface using the dedicated component
+        enable_streaming = st.session_state.get('enable_streaming', True)
+        render_chat_interface(
+            analyser_agent=st.session_state.get('analyser_agent'),
+            reporter_agent=st.session_state.get('reporter_agent'),
+            enable_streaming=enable_streaming
+        )
 
         # Debug information
         if st.session_state.show_debug:
