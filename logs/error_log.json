@@ -1,0 +1,1 @@
+{"error_id": "ERR_17585853399713", "timestamp": "2025-09-22T20:55:39.932002", "category": "system", "severity": "medium", "message": "division by zero", "user_message": "A system error occurred. Please try again.", "context": {"operation": "file_processing", "component": "csv_processor", "request_id": null}, "retry_possible": true}

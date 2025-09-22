@@ -23,6 +23,10 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from utils.csv_processor import CSVProcessor
 from utils.pattern_analyzer import PatternAnalyzer
 from utils.chart_generator import ChartGenerator
+from utils.error_handler import (
+    get_error_handler, ErrorContext, ErrorCategory,
+    FileProcessingError, ValidationError, handle_errors
+)
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -50,6 +54,10 @@ class FileUploader:
         """
         self.max_file_size_mb = max_file_size_mb
         self.cache_enabled = cache_enabled
+
+        # Initialize error handler
+        self.error_handler = get_error_handler()
+
         self._initialize_session_state()
 
     def _initialize_session_state(self):

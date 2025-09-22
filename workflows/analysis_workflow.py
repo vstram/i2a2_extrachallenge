@@ -27,6 +27,11 @@ from agents.analyser import AnalyserAgent, AnalysisRequest, AnalysisResult, crea
 from agents.reporter import ReporterAgent, ReportRequest, ReportResult, create_reporter_agent
 from utils.llm_config import LLMManager, create_llm_manager
 from utils.prompts import AnalysisType
+from utils.error_handler import (
+    ErrorHandler, ErrorContext, ErrorCategory, ErrorSeverity,
+    FileProcessingError, LLMAPIError, NetworkError, ApplicationError,
+    get_error_handler, handle_errors
+)
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -113,6 +118,9 @@ class AnalysisWorkflow:
         self.workflow_id = None
         self.progress_callback: Optional[Callable[[str, float], None]] = None
         self.stream_callback: Optional[Callable[[str], None]] = None
+
+        # Initialize error handler
+        self.error_handler = get_error_handler()
 
         # Initialize components
         self.csv_processor = CSVProcessor(chunk_size=self.config.chunk_size)
@@ -277,9 +285,16 @@ class AnalysisWorkflow:
         step.status = "in_progress"
         step.start_time = datetime.now()
 
+        # Create error context for this step
+        context = ErrorContext(
+            operation=step_name,
+            component="workflow",
+            request_id=self.workflow_id
+        )
+
         try:
-            # Execute step with retries
-            result = self._execute_with_retry(step_function, *args)
+            # Execute step with retries using error handler
+            result = self._execute_with_retry(step_function, context, *args)
 
             step.end_time = datetime.now()
             step.duration_seconds = (step.end_time - step.start_time).total_seconds()
@@ -301,28 +316,48 @@ class AnalysisWorkflow:
             step.end_time = datetime.now()
             step.duration_seconds = (step.end_time - step.start_time).total_seconds()
             step.status = "failed"
-            step.error_message = str(e)
 
-            logger.error(f"Step {step_name} failed after {step.duration_seconds:.2f}s: {e}")
-            raise WorkflowError(f"Step {step_name} failed: {e}") from e
+            # Handle error with comprehensive error handler
+            error_record = self.error_handler.handle_error(e, context)
+            step.error_message = error_record.user_message
 
-    def _execute_with_retry(self, func: Callable, *args) -> Any:
-        """Execute function with retry mechanism."""
-        last_exception = None
+            logger.error(f"Step {step_name} failed after {step.duration_seconds:.2f}s: {error_record.user_message}")
 
-        for attempt in range(self.config.retry_attempts):
-            try:
-                return func(*args)
-            except Exception as e:
-                last_exception = e
-                if attempt < self.config.retry_attempts - 1:
-                    wait_time = 2 ** attempt  # Exponential backoff
-                    logger.warning(f"Attempt {attempt + 1} failed, retrying in {wait_time}s: {e}")
-                    time.sleep(wait_time)
-                else:
-                    logger.error(f"All {self.config.retry_attempts} attempts failed")
+            # Create enhanced workflow error
+            workflow_error = WorkflowError(
+                error_record.user_message,
+                ErrorCategory.WORKFLOW,
+                error_record.severity,
+                context,
+                error_record.recovery_suggestions,
+                error_record.retry_possible
+            )
+            raise workflow_error from e
 
-        raise last_exception
+    def _execute_with_retry(self, func: Callable, context: ErrorContext, *args) -> Any:
+        """Execute function with retry mechanism using error handler."""
+        # Determine category based on function name
+        func_name = func.__name__ if hasattr(func, '__name__') else str(func)
+
+        if 'csv' in func_name or 'file' in func_name:
+            category = ErrorCategory.FILE_PROCESSING
+        elif 'analyser' in func_name or 'reporter' in func_name or 'llm' in func_name:
+            category = ErrorCategory.LLM_API
+        elif 'chart' in func_name:
+            category = ErrorCategory.SYSTEM
+        else:
+            category = ErrorCategory.WORKFLOW
+
+        try:
+            # Use error handler's retry mechanism
+            return self.error_handler.retry_with_backoff(
+                lambda: func(*args),
+                category,
+                context
+            )
+        except Exception as e:
+            logger.error(f"All retry attempts failed for {func_name}")
+            raise e
 
     def _step_process_csv(self, csv_file_path: str) -> Dict[str, Any]:
         """Step 1: Process CSV file and generate statistics."""
@@ -335,9 +370,32 @@ class AnalysisWorkflow:
                 logger.info("Using cached CSV statistics")
                 return cached_result
 
-        # Process CSV
-        logger.info(f"Processing CSV file: {csv_file_path}")
-        statistics = self.csv_processor.load_and_process(csv_file_path)
+        # Validate file before processing
+        file_path = Path(csv_file_path)
+        if not file_path.exists():
+            raise FileNotFoundError(f"CSV file not found: {csv_file_path}")
+
+        file_size = file_path.stat().st_size
+        file_size_mb = file_size / (1024 * 1024)
+
+        # Process CSV with enhanced error handling
+        logger.info(f"Processing CSV file: {csv_file_path} ({file_size_mb:.1f} MB)")
+
+        try:
+            statistics = self.csv_processor.load_and_process(csv_file_path)
+        except Exception as e:
+            # Use specific file processing error handling
+            error_record = self.error_handler.handle_file_processing_error(
+                e, csv_file_path, file_size
+            )
+            raise FileProcessingError(
+                error_record.user_message,
+                file_path=csv_file_path,
+                file_size=file_size,
+                severity=error_record.severity,
+                recovery_suggestions=error_record.recovery_suggestions,
+                retry_possible=error_record.retry_possible
+            ) from e
 
         # Convert numpy types to ensure JSON serialization compatibility
         statistics = self._convert_numpy_types(statistics)
@@ -413,7 +471,20 @@ class AnalysisWorkflow:
             stream_callback=self.stream_callback
         )
 
-        return self.analyser_agent.analyze_data(request)
+        try:
+            return self.analyser_agent.analyze_data(request)
+        except Exception as e:
+            # Use specific LLM API error handling
+            error_record = self.error_handler.handle_llm_api_error(
+                e, "analyser_agent", "data_analysis"
+            )
+            raise LLMAPIError(
+                error_record.user_message,
+                provider=getattr(self.analyser_agent.llm_manager, 'active_provider', 'unknown'),
+                severity=error_record.severity,
+                recovery_suggestions=error_record.recovery_suggestions,
+                retry_possible=error_record.retry_possible
+            ) from e
 
     def _step_run_reporter(self, analysis_result: WorkflowStep, charts: Optional[WorkflowStep],
                           dataset_name: str) -> ReportResult:
@@ -437,7 +508,20 @@ class AnalysisWorkflow:
             stream_callback=self.stream_callback
         )
 
-        return self.reporter_agent.generate_report(request)
+        try:
+            return self.reporter_agent.generate_report(request)
+        except Exception as e:
+            # Use specific LLM API error handling
+            error_record = self.error_handler.handle_llm_api_error(
+                e, "reporter_agent", "report_generation"
+            )
+            raise LLMAPIError(
+                error_record.user_message,
+                provider=getattr(self.reporter_agent.llm_manager, 'active_provider', 'unknown'),
+                severity=error_record.severity,
+                recovery_suggestions=error_record.recovery_suggestions,
+                retry_possible=error_record.retry_possible
+            ) from e
 
     def _load_csv_sample(self, csv_file_path: str):
         """Load CSV sample for pattern analysis."""
@@ -537,6 +621,25 @@ class AnalysisWorkflow:
                     logger.info(f"Removed cache file: {cache_file}")
                 except Exception as e:
                     logger.warning(f"Failed to remove cache file {cache_file}: {e}")
+
+    def get_error_statistics(self) -> Dict[str, Any]:
+        """Get error statistics from the error handler."""
+        return self.error_handler.get_error_statistics()
+
+    def get_user_friendly_errors(self) -> List[Dict[str, Any]]:
+        """Get user-friendly error summaries for display."""
+        errors = []
+        for record in self.error_handler.error_history:
+            errors.append({
+                'id': record.error_id,
+                'message': record.user_message,
+                'category': record.category.value,
+                'severity': record.severity.value,
+                'timestamp': record.timestamp.isoformat(),
+                'recovery_suggestions': record.recovery_suggestions[:3],  # Top 3 suggestions
+                'retry_possible': record.retry_possible
+            })
+        return errors
 
 
 # Convenience functions
