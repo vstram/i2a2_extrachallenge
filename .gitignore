@@ -1,1 +1,4 @@
 data/creditcard-huge.csv
+data/charts_output/*.png
+data/charts_output/*.json
+*.pyc
