@@ -340,12 +340,19 @@ class AgentManager:
 
         try:
             if not st.session_state.agents_initialized:
-                # Create agents with the configured LLM manager
+                # Create a proper LLM manager for agents with auto-detection enabled
+                agent_llm_manager = create_llm_manager(
+                    openai_api_key=st.session_state.openai_api_key,
+                    ollama_base_url=st.session_state.ollama_base_url,
+                    auto_detect_available=True  # Enable auto-detection for agents
+                )
+
+                # Create agents with the properly configured LLM manager
                 st.session_state.analyser_agent = AnalyserAgent(
-                    llm_manager=st.session_state.llm_manager
+                    llm_manager=agent_llm_manager
                 )
                 st.session_state.reporter_agent = ReporterAgent(
-                    llm_manager=st.session_state.llm_manager
+                    llm_manager=agent_llm_manager
                 )
 
                 st.session_state.agents_initialized = True

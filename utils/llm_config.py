@@ -127,11 +127,11 @@ class LLMManager:
         # Ollama configuration
         ollama_config = LLMConfiguration(
             provider=LLMProvider.OLLAMA,
-            model_name="llama2",
+            model_name=os.getenv("OLLAMA_MODEL", "llama2"),
             temperature=0.7,
             max_tokens=2000,
             streaming=True,
-            base_url="http://localhost:11434",
+            base_url=os.getenv("OLLAMA_BASE_URL", "http://localhost:11434"),
             timeout=60,
             max_retries=2
         )
@@ -511,13 +511,23 @@ def create_llm_manager(openai_api_key: Optional[str] = None,
     if auto_detect_available:
         available = manager.get_available_providers()
         if available:
-            # Prefer OpenAI if available, fallback to Ollama
-            preferred = LLMProvider.OPENAI if LLMProvider.OPENAI in available else available[0]
+            # Respect LLM_PROVIDER environment variable, fallback to detection
+            env_provider = os.getenv("LLM_PROVIDER", "openai").lower()
+
+            if env_provider == "ollama" and LLMProvider.OLLAMA in available:
+                preferred = LLMProvider.OLLAMA
+            elif env_provider == "openai" and LLMProvider.OPENAI in available:
+                preferred = LLMProvider.OPENAI
+            else:
+                # Fallback to first available if env provider not available
+                preferred = available[0]
+                logger.warning(f"Configured provider '{env_provider}' not available, using {preferred.value}")
+
             try:
                 manager.set_active_provider(preferred)
-                logger.info(f"Auto-detected and set active provider: {preferred.value}")
+                logger.info(f"Set active provider: {preferred.value} (from LLM_PROVIDER={env_provider})")
             except Exception as e:
-                logger.warning(f"Could not set auto-detected provider: {e}")
+                logger.warning(f"Could not set active provider: {e}")
 
     return manager
 
