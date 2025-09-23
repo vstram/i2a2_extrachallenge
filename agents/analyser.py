@@ -8,6 +8,7 @@ streaming capabilities and structured JSON outputs.
 
 import json
 import logging
+import numpy as np
 from typing import Dict, Any, List, Optional, Iterator, Callable
 from dataclasses import dataclass
 from datetime import datetime
@@ -159,12 +160,26 @@ class AnalyserAgent:
         if not request.pattern_data:
             logger.warning("Pattern data is empty")
 
+    def _json_serializer(self, obj):
+        """JSON serializer for numpy types and other non-serializable objects."""
+        if isinstance(obj, np.integer):
+            return int(obj)
+        elif isinstance(obj, np.floating):
+            return float(obj)
+        elif isinstance(obj, (np.bool_, bool)):
+            return bool(obj)
+        elif isinstance(obj, np.ndarray):
+            return obj.tolist()
+        elif hasattr(obj, 'isoformat'):  # datetime objects
+            return obj.isoformat()
+        return str(obj)  # fallback to string representation
+
     def _prepare_prompt_data(self, request: AnalysisRequest) -> Dict[str, str]:
         """Prepare prompt data for LLM."""
-        # Convert data to JSON strings
-        statistics_json = json.dumps(request.statistics_data, indent=2)
-        pattern_json = json.dumps(request.pattern_data, indent=2)
-        chart_json = json.dumps(request.chart_metadata or {}, indent=2)
+        # Convert data to JSON strings with numpy type conversion
+        statistics_json = json.dumps(request.statistics_data, indent=2, default=self._json_serializer)
+        pattern_json = json.dumps(request.pattern_data, indent=2, default=self._json_serializer)
+        chart_json = json.dumps(request.chart_metadata or {}, indent=2, default=self._json_serializer)
 
         # Format prompt using templates
         return format_analyser_prompt(

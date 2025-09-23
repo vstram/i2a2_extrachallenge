@@ -67,7 +67,10 @@ class CSVProcessor:
         if df is None or df.empty:
             raise ValueError("DataFrame is None or empty")
 
-        return self._generate_statistics(df)
+        statistics = self._generate_statistics(df)
+
+        # Convert numpy types to JSON-serializable types
+        return self._convert_numpy_types(statistics)
 
     def _process_small_file(self, file_path: Path) -> Dict[str, Any]:
         """Process small files by loading entirely into memory."""
@@ -343,24 +346,26 @@ class CSVProcessor:
 
         return total_missing
 
+    def _convert_numpy_types(self, obj):
+        """Convert numpy types to native Python types for JSON serialization."""
+        if isinstance(obj, np.integer):
+            return int(obj)
+        elif isinstance(obj, np.floating):
+            return float(obj)
+        elif isinstance(obj, (np.bool_, bool)):
+            return bool(obj)
+        elif isinstance(obj, np.ndarray):
+            return obj.tolist()
+        elif isinstance(obj, dict):
+            return {key: self._convert_numpy_types(value) for key, value in obj.items()}
+        elif isinstance(obj, list):
+            return [self._convert_numpy_types(item) for item in obj]
+        return obj
+
     def export_to_json(self, statistics: Dict[str, Any], output_path: str) -> None:
         """Export statistics to JSON file."""
-        def convert_numpy_types(obj):
-            """Convert numpy types to native Python types for JSON serialization."""
-            if isinstance(obj, np.integer):
-                return int(obj)
-            elif isinstance(obj, np.floating):
-                return float(obj)
-            elif isinstance(obj, np.ndarray):
-                return obj.tolist()
-            elif isinstance(obj, dict):
-                return {key: convert_numpy_types(value) for key, value in obj.items()}
-            elif isinstance(obj, list):
-                return [convert_numpy_types(item) for item in obj]
-            return obj
-
         # Convert numpy types to JSON-serializable types
-        json_stats = convert_numpy_types(statistics)
+        json_stats = self._convert_numpy_types(statistics)
 
         with open(output_path, 'w') as f:
             json.dump(json_stats, f, indent=2, default=str)
