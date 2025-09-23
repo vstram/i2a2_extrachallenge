@@ -12,6 +12,10 @@ import sys
 from typing import Dict, Any, Optional, List
 import logging
 from datetime import datetime
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 # Configure page settings
 st.set_page_config(
@@ -42,12 +46,25 @@ class SessionState:
     @staticmethod
     def initialize():
         """Initialize all session state variables."""
+        # Read environment variables with fallbacks
+        env_llm_provider = os.getenv('LLM_PROVIDER', 'openai')
+        env_openai_key = os.getenv('OPENAI_API_KEY', '')
+        env_ollama_url = os.getenv('OLLAMA_BASE_URL', 'http://localhost:11434')
+        env_ollama_model = os.getenv('OLLAMA_MODEL', 'llama3.1:latest')
+
+        # Log environment variable loading for debugging
+        logger.info(f"Loading configuration from .env:")
+        logger.info(f"  LLM_PROVIDER: {env_llm_provider}")
+        logger.info(f"  OLLAMA_BASE_URL: {env_ollama_url}")
+        logger.info(f"  OLLAMA_MODEL: {env_ollama_model}")
+        logger.info(f"  OPENAI_API_KEY: {'***' + env_openai_key[-4:] if env_openai_key else 'NOT_SET'}")
+
         defaults = {
-            # LLM Configuration
-            'llm_provider': LLMProvider.OPENAI.value,
-            'openai_api_key': '',
-            'ollama_base_url': 'http://localhost:11434',
-            'ollama_model': 'llama3.1:latest',
+            # LLM Configuration (from environment variables)
+            'llm_provider': env_llm_provider,
+            'openai_api_key': env_openai_key,
+            'ollama_base_url': env_ollama_url,
+            'ollama_model': env_ollama_model,
 
             # Application State
             'llm_manager': None,

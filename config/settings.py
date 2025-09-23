@@ -14,6 +14,10 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from enum import Enum
 import warnings
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 
 class Environment(Enum):

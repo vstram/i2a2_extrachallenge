@@ -12,6 +12,10 @@ from typing import Dict, Any, Optional, Iterator, List
 from enum import Enum
 import logging
 from dataclasses import dataclass
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 # LangChain imports
 from langchain_core.language_models.chat_models import BaseChatModel
