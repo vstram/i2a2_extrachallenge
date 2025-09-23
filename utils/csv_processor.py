@@ -54,6 +54,21 @@ class CSVProcessor:
         else:
             return self._process_small_file(file_path)
 
+    def process_dataframe(self, df: pd.DataFrame) -> Dict[str, Any]:
+        """
+        Process an already loaded DataFrame and generate comprehensive statistics.
+
+        Args:
+            df: Pandas DataFrame to process
+
+        Returns:
+            Dictionary containing all statistics and analysis results
+        """
+        if df is None or df.empty:
+            raise ValueError("DataFrame is None or empty")
+
+        return self._generate_statistics(df)
+
     def _process_small_file(self, file_path: Path) -> Dict[str, Any]:
         """Process small files by loading entirely into memory."""
         df = pd.read_csv(file_path)
