@@ -32,6 +32,11 @@ from utils.error_handler import (
     FileProcessingError, LLMAPIError, NetworkError, ApplicationError,
     get_error_handler, handle_errors
 )
+from utils.performance import (
+    get_cache, get_progress_tracker, get_performance_monitor,
+    MemoryOptimizer, ChunkedProcessor, optimize_for_large_files,
+    cached, monitored
+)
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -122,6 +127,11 @@ class AnalysisWorkflow:
         # Initialize error handler
         self.error_handler = get_error_handler()
 
+        # Initialize performance components
+        self.cache = get_cache()
+        self.performance_monitor = get_performance_monitor()
+        self.chunked_processor = ChunkedProcessor()
+
         # Initialize components
         self.csv_processor = CSVProcessor(chunk_size=self.config.chunk_size)
         self.pattern_analyzer = PatternAnalyzer(max_samples=self.config.max_samples_pattern_analysis)
@@ -144,6 +154,15 @@ class AnalysisWorkflow:
     def set_progress_callback(self, callback: Callable[[str, float], None]):
         """Set callback for progress updates. Args: (step_name, progress_percentage)"""
         self.progress_callback = callback
+
+        # Also set up enhanced progress tracker
+        def enhanced_callback(operation, progress, metadata):
+            if self.progress_callback:
+                message = metadata.get('message', operation)
+                self.progress_callback(message, progress)
+
+        self.progress_tracker = get_progress_tracker()
+        self.progress_tracker.callback = enhanced_callback
 
     def set_stream_callback(self, callback: Callable[[str], None]):
         """Set callback for streaming text output. Args: (text_chunk)"""
@@ -360,49 +379,76 @@ class AnalysisWorkflow:
             raise e
 
     def _step_process_csv(self, csv_file_path: str) -> Dict[str, Any]:
-        """Step 1: Process CSV file and generate statistics."""
-        cache_key = f"csv_stats_{Path(csv_file_path).name}"
-
-        # Check cache
-        if self.config.enable_caching:
-            cached_result = self._load_from_cache(cache_key)
-            if cached_result:
-                logger.info("Using cached CSV statistics")
-                return cached_result
-
-        # Validate file before processing
+        """Step 1: Process CSV file and generate statistics with performance optimization."""
         file_path = Path(csv_file_path)
-        if not file_path.exists():
-            raise FileNotFoundError(f"CSV file not found: {csv_file_path}")
-
         file_size = file_path.stat().st_size
         file_size_mb = file_size / (1024 * 1024)
 
-        # Process CSV with enhanced error handling
-        logger.info(f"Processing CSV file: {csv_file_path} ({file_size_mb:.1f} MB)")
+        # Generate cache key including file modification time for freshness
+        file_mtime = file_path.stat().st_mtime
+        cache_key = f"csv_stats_{file_path.name}_{int(file_mtime)}_{file_size}"
 
-        try:
-            statistics = self.csv_processor.load_and_process(csv_file_path)
-        except Exception as e:
-            # Use specific file processing error handling
-            error_record = self.error_handler.handle_file_processing_error(
-                e, csv_file_path, file_size
-            )
-            raise FileProcessingError(
-                error_record.user_message,
-                file_path=csv_file_path,
-                file_size=file_size,
-                severity=error_record.severity,
-                recovery_suggestions=error_record.recovery_suggestions,
-                retry_possible=error_record.retry_possible
-            ) from e
+        # Check advanced cache first
+        cached_result = self.cache.get(cache_key)
+        if cached_result is not None:
+            logger.info(f"Using cached CSV statistics for {file_path.name}")
+            return cached_result
+
+        # Validate file before processing
+        if not file_path.exists():
+            raise FileNotFoundError(f"CSV file not found: {csv_file_path}")
+
+        # Get optimization suggestions
+        optimization_suggestions = optimize_for_large_files(csv_file_path)
+        logger.info(f"File analysis: {file_size_mb:.1f}MB file, "
+                   f"chunked processing: {optimization_suggestions['use_chunked_processing']}")
+
+        # Update chunk size based on file size and available memory
+        if optimization_suggestions['use_chunked_processing']:
+            optimized_chunk_size = optimization_suggestions['suggested_chunk_size']
+            self.csv_processor.chunk_size = optimized_chunk_size
+            logger.info(f"Using optimized chunk size: {optimized_chunk_size} rows")
+
+        # Process CSV with performance monitoring
+        with self.performance_monitor.monitor_operation(
+            f"csv_processing_{file_path.name}",
+            file_size_mb=file_size_mb,
+            optimization_used=optimization_suggestions['use_chunked_processing']
+        ) as metrics:
+            try:
+                # Use memory optimization context
+                with MemoryOptimizer.memory_limit_check("csv_processing"):
+                    statistics = self.csv_processor.load_and_process(csv_file_path)
+
+                # Update metrics
+                if 'file_info' in statistics:
+                    metrics.rows_processed = statistics['file_info'].get('total_rows', 0)
+                    metrics.data_size_mb = file_size_mb
+
+            except Exception as e:
+                # Use specific file processing error handling
+                error_record = self.error_handler.handle_file_processing_error(
+                    e, csv_file_path, file_size
+                )
+                raise FileProcessingError(
+                    error_record.user_message,
+                    file_path=csv_file_path,
+                    file_size=file_size,
+                    severity=error_record.severity,
+                    recovery_suggestions=error_record.recovery_suggestions,
+                    retry_possible=error_record.retry_possible
+                ) from e
 
         # Convert numpy types to ensure JSON serialization compatibility
         statistics = self._convert_numpy_types(statistics)
 
-        # Cache result
-        if self.config.enable_caching:
-            self._save_to_cache(cache_key, statistics)
+        # Cache result with tags for invalidation
+        cache_tags = ["csv_stats", file_path.stem, f"size_{int(file_size_mb)}mb"]
+        self.cache.put(cache_key, statistics, tags=cache_tags)
+
+        logger.info(f"CSV processing completed: {metrics.rows_processed} rows in "
+                   f"{metrics.duration_seconds:.2f}s "
+                   f"({metrics.throughput_rows_per_sec:.0f} rows/sec)")
 
         return statistics
 
@@ -640,6 +686,37 @@ class AnalysisWorkflow:
                 'retry_possible': record.retry_possible
             })
         return errors
+
+    def get_performance_stats(self) -> Dict[str, Any]:
+        """Get comprehensive performance statistics."""
+        return {
+            'cache_stats': self.cache.get_stats(),
+            'operation_stats': self.performance_monitor.get_operation_stats(),
+            'recent_metrics': [
+                {
+                    'operation': m.operation_name,
+                    'duration': m.duration_seconds,
+                    'memory_delta_mb': m.memory_delta_mb,
+                    'rows_processed': m.rows_processed,
+                    'throughput': m.throughput_rows_per_sec
+                }
+                for m in self.performance_monitor.get_recent_metrics(5)
+            ]
+        }
+
+    def clear_performance_cache(self):
+        """Clear performance cache for testing or cleanup."""
+        self.cache.clear()
+        logger.info("Performance cache cleared")
+
+    def export_performance_metrics(self, file_path: str):
+        """Export performance metrics to file."""
+        self.performance_monitor.export_metrics(file_path)
+        logger.info(f"Performance metrics exported to {file_path}")
+
+    def optimize_for_dataset(self, file_path: str) -> Dict[str, Any]:
+        """Get optimization recommendations for a specific dataset."""
+        return optimize_for_large_files(file_path)
 
 
 # Convenience functions

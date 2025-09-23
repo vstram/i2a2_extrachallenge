@@ -11,4 +11,17 @@ dependencies = [
     "pandas>=2.3.2",
     "plotly>=6.3.0",
     "streamlit>=1.49.1",
+    "psutil>=5.9.0",  # For performance monitoring
+]
+
+[project.optional-dependencies]
+performance = [
+    "psutil>=5.9.0",  # Enhanced memory and CPU monitoring
+    "numpy>=1.24.0",  # Optimized array operations
+]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-cov>=4.0.0",
+    "black>=23.0.0",
+    "flake8>=6.0.0",
 ]
