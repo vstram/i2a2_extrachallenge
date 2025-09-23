@@ -1,0 +1,56 @@
+# Production Dependencies
+# Optimized packages for production deployment with security and performance focus
+
+# Include all core requirements
+-r requirements.txt
+
+# Production Web Server
+gunicorn==25.1.0            # Production WSGI server
+uvicorn[standard]==0.34.1   # High-performance ASGI server
+
+# Performance Monitoring and Observability
+psutil==6.2.0               # System monitoring
+sentry-sdk[streamlit]==2.28.1  # Error tracking and performance monitoring
+
+# Security Enhancements
+cryptography==45.1.0        # Encryption and security
+pyjwt==2.10.1               # JWT authentication
+bcrypt==4.3.0               # Password hashing
+
+# Logging and Monitoring
+structlog==25.4.0           # Structured logging
+prometheus-client==0.22.0   # Metrics collection
+statsd==5.2.4               # StatsD metrics
+
+# Database and Caching (if extending features)
+redis==5.5.2                # Redis caching and session storage
+sqlalchemy==2.0.39          # Database ORM for data persistence
+
+# Configuration Management
+pydantic==2.12.0            # Data validation and configuration
+python-dotenv==1.0.1        # Environment variable management
+
+# HTTP and Networking
+requests==2.32.5            # HTTP client
+httpx==0.28.1               # Async HTTP client
+urllib3==2.4.0              # HTTP library
+
+# Memory Management and Performance
+pympler==0.10.2             # Memory usage analysis
+memory-profiler==0.66.0     # Memory profiling for optimization
+
+# File Processing and Compression
+lz4==4.4.0                  # Fast compression for caching
+zstandard==0.24.0           # High-performance compression
+
+# Timezone and Date Handling
+pytz==2024.3                # Timezone support
+python-dateutil==2.9.0      # Date parsing and manipulation
+
+# Health Checks and Monitoring
+healthcheck==2.0.1          # Application health monitoring
+py-healthcheck==1.10.1      # Health check endpoints
+
+# Process Management
+supervisor==5.0.0           # Process control and monitoring
+celery==5.5.0               # Distributed task queue (if needed for background processing)

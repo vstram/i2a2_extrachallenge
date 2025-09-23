@@ -4,24 +4,195 @@ version = "0.1.0"
 description = "Streamlit AI Analytics Chatbot for CSV fraud detection analysis using dual-agent system"
 readme = "README.md"
 requires-python = ">=3.11"
+license = {text = "MIT"}
+authors = [
+    {name = "AI Analytics Team"},
+]
+keywords = [
+    "streamlit", "ai", "analytics", "fraud-detection", "langchain",
+    "machine-learning", "chatbot", "data-analysis"
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Financial and Insurance Industry",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Scientific/Engineering :: Information Analysis",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Operating System :: OS Independent",
+]
+
+# Core dependencies required for basic functionality
 dependencies = [
-    "langchain>=0.3.27",
-    "langchain-ollama>=0.3.8",
-    "langchain-openai>=0.3.33",
-    "pandas>=2.3.2",
-    "plotly>=6.3.0",
+    # Core Framework and UI
     "streamlit>=1.49.1",
-    "psutil>=5.9.0",  # For performance monitoring
+    "pandas>=2.3.2",
+    "numpy>=2.3.0",
+    "plotly>=6.3.0",
+
+    # LangChain AI Framework
+    "langchain>=0.3.27",
+    "langchain-core>=0.3.70",
+    "langchain-openai>=0.3.33",
+
+    # Data Science and Analysis
+    "scipy>=1.16.0",
+    "scikit-learn>=1.7.0",
+    "matplotlib>=3.10.0",
+    "seaborn>=0.13.0",
+
+    # HTTP and Networking
+    "requests>=2.32.0",
+    "httpx>=0.28.0",
+
+    # Utility Libraries
+    "python-dateutil>=2.9.0",
+    "jsonschema>=4.25.0",
 ]
 
 [project.optional-dependencies]
-performance = [
-    "psutil>=5.9.0",  # Enhanced memory and CPU monitoring
-    "numpy>=1.24.0",  # Optimized array operations
+# Ollama support for local LLM
+ollama = [
+    "langchain-ollama>=0.3.8",
 ]
+
+# Enhanced performance monitoring and optimization
+performance = [
+    "psutil>=6.2.0",           # System monitoring
+    "memory-profiler>=0.66.0", # Memory profiling
+    "numba>=0.66.0",           # JIT compilation
+    "dask>=2025.1.0",          # Parallel computing
+]
+
+# Optional advanced features
+advanced = [
+    "plotly-dash>=2.18.0",     # Advanced dashboards
+    "bokeh>=3.7.0",            # Interactive visualizations
+    "openpyxl>=3.1.5",         # Excel support
+    "cryptography>=45.1.0",    # Security features
+]
+
+# Development dependencies
 dev = [
-    "pytest>=7.0.0",
-    "pytest-cov>=4.0.0",
-    "black>=23.0.0",
-    "flake8>=6.0.0",
+    # Testing
+    "pytest>=8.4.0",
+    "pytest-cov>=7.0.0",
+    "pytest-asyncio>=0.26.0",
+    "pytest-mock>=3.15.0",
+
+    # Code Quality
+    "black>=25.1.0",
+    "isort>=5.14.0",
+    "flake8>=8.0.0",
+    "mypy>=1.14.0",
+    "bandit>=1.9.0",
+
+    # Development Tools
+    "pre-commit>=4.3.0",
+    "jupyter>=1.2.0",
+    "ipython>=8.36.0",
+]
+
+# Production deployment dependencies
+production = [
+    "gunicorn>=25.1.0",        # Production server
+    "sentry-sdk>=2.28.0",      # Error monitoring
+    "structlog>=25.4.0",       # Structured logging
+    "prometheus-client>=0.22.0", # Metrics
+    "python-dotenv>=1.0.0",    # Environment management
+]
+
+# All optional dependencies combined
+all = [
+    "i2a2-extrachallenge[ollama,performance,advanced,production]"
+]
+
+[project.urls]
+Homepage = "https://github.com/vstram/i2a2_extrachallenge"
+Repository = "https://github.com/vstram/i2a2_extrachallenge"
+Documentation = "https://github.com/vstram/i2a2_extrachallenge#readme"
+Issues = "https://github.com/vstram/i2a2_extrachallenge/issues"
+
+[project.scripts]
+ai-analytics = "app:main"
+
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["*"]
+exclude = ["tests*", "docs*", ".*"]
+
+[tool.black]
+line-length = 100
+target-version = ['py311']
+include = '\.pyi?$'
+extend-exclude = '''
+/(
+  # directories
+  \.eggs
+  | \.git
+  | \.hg
+  | \.mypy_cache
+  | \.tox
+  | \.venv
+  | build
+  | dist
+)/
+'''
+
+[tool.isort]
+profile = "black"
+line_length = 100
+multi_line_output = 3
+
+[tool.pytest.ini_options]
+minversion = "8.0"
+addopts = "-ra -q --strict-markers --strict-config"
+testpaths = ["tests"]
+python_files = ["test_*.py", "*_test.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+
+[tool.mypy]
+python_version = "3.11"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = true
+warn_unreachable = true
+strict_equality = true
+
+[tool.coverage.run]
+source = ["."]
+omit = [
+    "*/tests/*",
+    "*/test_*",
+    "*/.venv/*",
+    "*/venv/*",
+    "setup.py",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "if self.debug:",
+    "if settings.DEBUG",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if 0:",
+    "if __name__ == .__main__.:",
+    "class .*\bProtocol\\):",
+    "@(abc\\.)?abstractmethod",
 ]

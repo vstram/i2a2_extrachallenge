@@ -1,0 +1,41 @@
+# Optional Dependencies for Enhanced Features
+# These packages provide additional functionality but are not required for basic operation
+
+# Enhanced Performance Monitoring (requires psutil for system metrics)
+psutil==6.2.0
+
+# Advanced Data Visualization
+plotly-dash==2.18.3
+bokeh==3.7.0
+
+# Enhanced Scientific Computing
+numba==0.66.0                # JIT compilation for faster numerical operations
+dask==2025.1.0               # Parallel computing for large datasets
+
+# Database Support (if extending to database storage)
+sqlalchemy==2.0.39           # Database ORM
+sqlite3                      # Built-in, no version needed
+
+# Export and Import Enhancement
+openpyxl==3.1.5             # Excel file support
+xlsxwriter==3.4.3           # Excel writing capabilities
+
+# Security Enhancements
+cryptography==45.1.0        # Encryption and security utilities
+pyjwt==2.10.1               # JWT token handling
+
+# Development and Testing Extensions
+memory-profiler==0.66.0     # Memory usage profiling
+line-profiler==4.4.0        # Line-by-line profiling
+
+# Deployment and Production
+gunicorn==25.1.0            # WSGI server for production deployment
+uvicorn==0.34.1             # ASGI server alternative
+
+# Logging Enhancements
+structlog==25.4.0           # Structured logging
+sentry-sdk==2.28.1          # Error tracking and monitoring
+
+# Configuration Management
+pydantic==2.12.0            # Data validation and settings management
+click==8.3.0                # Command-line interface tools

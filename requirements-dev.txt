@@ -1,0 +1,59 @@
+# Development Dependencies
+# Packages required for development, testing, and code quality
+
+# Testing Framework
+pytest==8.4.0
+pytest-cov==7.0.2
+pytest-asyncio==0.26.0
+pytest-mock==3.15.0
+pytest-xdist==3.7.0         # Parallel test execution
+
+# Code Quality and Formatting
+black==25.1.0               # Code formatter
+isort==5.14.0               # Import sorting
+flake8==8.0.1               # Linting
+mypy==1.14.1                # Type checking
+bandit==1.9.0               # Security linting
+
+# Documentation
+sphinx==8.3.0               # Documentation generation
+sphinx-rtd-theme==4.1.0     # Read the Docs theme
+mkdocs==2.1.1               # Alternative documentation
+mkdocs-material==9.8.0      # Material theme for MkDocs
+
+# Development Tools
+pre-commit==4.3.0           # Git hooks for code quality
+tox==4.36.0                 # Testing across multiple environments
+coverage==8.1.0             # Code coverage analysis
+
+# Jupyter and Interactive Development
+jupyter==1.2.5              # Jupyter notebook
+ipython==8.36.0             # Enhanced Python REPL
+jupyterlab==4.6.1           # Modern Jupyter interface
+
+# Performance Profiling
+py-spy==0.4.2               # Sampling profiler
+scalene==1.9.59             # High-performance profiler
+
+# Build and Packaging
+build==2.0.1               # PEP 517 build tool
+setuptools==77.6.2         # Package building
+wheel==0.51.0              # Binary distribution format
+twine==6.1.0               # Package uploading to PyPI
+
+# Git and Version Control
+gitpython==3.1.45          # Git integration
+semver==3.1.1              # Semantic versioning
+
+# Environment Management
+pip-tools==7.10.0          # Dependency management
+virtualenv==20.34.1        # Virtual environment creation
+
+# API Development and Testing
+httpx==0.28.1              # HTTP client for testing
+requests-mock==1.15.2      # Mocking HTTP requests
+responses==0.30.0          # Alternative HTTP mocking
+
+# Database Testing (if extending to database features)
+pytest-postgresql==8.0.2   # PostgreSQL testing fixtures
+pytest-sqlite==1.2.0       # SQLite testing utilities
