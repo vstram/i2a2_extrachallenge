@@ -3,3 +3,4 @@ data/charts_output/*.png
 data/charts_output/*.json
 data/*.json
 *.pyc
+.env

@@ -164,6 +164,9 @@ MAX_FILE_SIZE_MB=150
    ollama pull llama2       # 7B parameters, fast
    ollama pull llama2:13b   # 13B parameters, better quality
    ollama pull codellama    # Code-specialized model
+   
+   # To inspect the Ollama logs on mac
+   tail -f ~/.ollama/logs/server.log   
    ```
 
 3. **Start Ollama Service**:
