@@ -37,6 +37,7 @@ from utils.performance import (
     MemoryOptimizer, ChunkedProcessor, optimize_for_large_files,
     cached, monitored
 )
+from config.settings import get_settings
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -57,6 +58,23 @@ class WorkflowConfig:
     retry_attempts: int = 3
     openai_api_key: Optional[str] = None
     ollama_base_url: Optional[str] = None
+
+    @classmethod
+    def from_settings(cls, settings=None):
+        """Create workflow config from global settings."""
+        if settings is None:
+            settings = get_settings()
+
+        return cls(
+            chunk_size=settings.data_processing.chunk_size,
+            max_samples_pattern_analysis=settings.data_processing.max_rows_sample,
+            enable_charts=settings.ui.enable_charts,
+            enable_caching=settings.cache.enabled,
+            cache_dir=settings.cache.cache_dir,
+            retry_attempts=settings.llm.retry_attempts,
+            openai_api_key=settings.llm.openai_api_key,
+            ollama_base_url=settings.llm.ollama_base_url
+        )
 
 
 @dataclass

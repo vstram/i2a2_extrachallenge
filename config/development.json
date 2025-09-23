@@ -1,0 +1,45 @@
+{
+  "environment": "development",
+  "llm": {
+    "default_provider": "ollama",
+    "openai_temperature": 0.0,
+    "ollama_model": "llama3.1:latest",
+    "streaming_enabled": true,
+    "retry_attempts": 2
+  },
+  "data_processing": {
+    "chunk_size": 5000,
+    "max_file_size_mb": 50,
+    "max_rows_sample": 25000,
+    "enable_memory_optimization": true
+  },
+  "cache": {
+    "enabled": true,
+    "max_size_mb": 100,
+    "default_ttl_hours": 12,
+    "cleanup_interval_hours": 24
+  },
+  "ui": {
+    "page_title": "AI Analytics Chatbot - Development",
+    "enable_charts": true,
+    "enable_file_upload": true,
+    "max_chat_history": 20
+  },
+  "security": {
+    "validate_api_keys": false,
+    "scan_uploaded_files": false,
+    "max_upload_size_mb": 50
+  },
+  "logging": {
+    "app_log_level": "DEBUG",
+    "enable_console_logging": true,
+    "streamlit_log_level": "INFO",
+    "langchain_log_level": "WARNING"
+  },
+  "monitoring": {
+    "enable_performance_monitoring": true,
+    "enable_error_tracking": true,
+    "metrics_collection_interval": 5.0,
+    "export_metrics": false
+  }
+}
